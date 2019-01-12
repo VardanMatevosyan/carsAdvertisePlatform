@@ -17,7 +17,7 @@ $(document).ready(function () {
                         city: $("#signUpCity").val(),
                         phoneNumber: $("#signUpPhoneNumber").val(),
                         role: {
-                            id: 1,
+                            id: 2,
                             name: "user"
                         }
                     }),
