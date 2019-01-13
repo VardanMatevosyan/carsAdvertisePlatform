@@ -25,6 +25,9 @@ import ru.matevosyan.entity.User;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 import java.io.File;
+import java.net.URISyntaxException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -69,12 +72,23 @@ public class OfferController {
      */
     @PostMapping(value = "/**/uploadFile", consumes = {"multipart/form-data"})
     public ResponseEntity<Void> upload(@RequestPart("file") MultipartFile file,
-                          @RequestPart("jsonData") Offer offer, HttpSession httpSession) {
+                          @RequestPart("jsonData") Offer offer, HttpSession httpSession) throws URISyntaxException {
         User user = (User) httpSession.getAttribute("currentUser");
-        String path = String.format("%s%s/%s/%s%s/%s", this.environment.getProperty("imgFilePath"),
-                "static/images", user.getName(), offer.getCar().getBrand(),
-                offer.getCar().getModelVehicle(), offer.getPicture());
-        this.uploader.upload(file, path);
+        String root = this.environment.getProperty("rootDir");
+        String parent = this.environment.getProperty("imagesDir");
+        String pathToFile = String.format("%s%s%s", root, SEPARATOR, parent);
+        Path absoluteFilePath;
+        try {
+            absoluteFilePath = Paths.get(ClassLoader.getSystemResource(pathToFile).toURI());
+            String path = String.format("%s%s%s%s%s%s%s%s", absoluteFilePath.normalize().toString(), SEPARATOR,
+                    user.getName(), SEPARATOR,
+                    offer.getCar().getBrand(), offer.getCar().getModelVehicle(), SEPARATOR,
+                    offer.getPicture());
+            this.uploader.upload(file, path);
+        } catch (URISyntaxException uriException) {
+            throw new URISyntaxException("Syntax uri error", uriException.getMessage(), uriException.getIndex());
+        }
+
         return new ResponseEntity<Void>(HttpStatus.CREATED);
     }
 
@@ -98,8 +112,6 @@ public class OfferController {
     @ResponseBody
     public JsonResponse add(@RequestBody Offer offer, HttpSession httpSession) {
         String name = offer.getPicture();
-//        User user = (User) httpSession.getAttribute("currentUser");
-//        offer.setUser(user);
         offer.setPostingDate(new Timestamp(System.currentTimeMillis()));
         offer.setSoldState(false);
 
@@ -187,15 +199,24 @@ public class OfferController {
      */
     @DeleteMapping(value = "/**/delete/{id}")
     @ResponseBody
-    public ResponseEntity<?> delete(@PathVariable Integer id) {
+    public ResponseEntity<?> delete(@PathVariable Integer id) throws URISyntaxException {
         Optional<Offer> optional = this.service.findById(id);
         if (optional.isPresent()) {
             this.service.deleteById(id);
             Offer offer = optional.get();
-            String dir = String.format("%s%s%s%s%s%s%s%s%s%s", this.environment.getProperty("imgFilePath"), SEPARATOR,
-                    "static", SEPARATOR, IMAGE_PACKAGE, SEPARATOR, offer.getUser().getName(), SEPARATOR,
-                    offer.getCar().getBrand(), offer.getCar().getModelVehicle());
-            this.uploader.delete(new File(dir));
+            String root = this.environment.getProperty("rootDir");
+            String parent = this.environment.getProperty("imagesDir");
+            String pathToFile = String.format("%s%s%s", root, System.getProperty("file.separator"), parent);
+            Path absoluteFilePath;
+            try {
+                absoluteFilePath = Paths.get(ClassLoader.getSystemResource(pathToFile).toURI());
+                String dir = String.format("%s%s%s%s%s%s", absoluteFilePath.normalize().toString(),
+                        System.getProperty("file.separator"), offer.getUser().getName(), System.getProperty("file.separator"),
+                        offer.getCar().getBrand(), offer.getCar().getModelVehicle());
+                this.uploader.delete(new File(dir));
+            } catch (URISyntaxException uriException) {
+                throw new URISyntaxException("Syntax uri error", uriException.getMessage(), uriException.getIndex());
+            }
             HttpHeaders responseHeaders = new HttpHeaders();
             responseHeaders.setContentType(MediaType.APPLICATION_JSON_UTF8);
             return new ResponseEntity<Offer>(offer, responseHeaders, HttpStatus.OK);
@@ -215,7 +236,7 @@ public class OfferController {
      * @return ResponseEntity.
      */
     @PutMapping(value = "/**/update/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> updateOffer(@PathVariable Integer id, @RequestBody Offer offer, HttpSession session) {
+    public ResponseEntity<?> updateOffer(@PathVariable Integer id, @RequestBody Offer offer, HttpSession session) throws URISyntaxException {
         User currentUser = (User) session.getAttribute("currentUser");
         Offer exists = this.service.getOne(id);
         if (exists.getId() == id.intValue()) {
@@ -225,16 +246,23 @@ public class OfferController {
             offer.setPostingDate(exists.getPostingDate());
             offer.setSoldState(exists.getSoldState());
             String pictureName = offer.getPicture();
+            String root = this.environment.getProperty("rootDir");
+            String parent = this.environment.getProperty("imagesDir");
             if (pictureName.contains("default")) {
                 offer.setPicture(String.format("%s%s%s", IMAGE_PACKAGE, SEPARATOR, pictureName));
             } else {
-                offer.setPicture(String.format("%s/%s/%s%s/%s", "images", currentUser.getName(),
-                        offer.getCar().getBrand(), offer.getCar().getModelVehicle(), pictureName));
+                offer.setPicture(String.format("%s%s%s%s%s%s%s%s", parent, SEPARATOR, currentUser.getName(), SEPARATOR,
+                        offer.getCar().getBrand(), offer.getCar().getModelVehicle(), SEPARATOR, pictureName));
             }
-            String path = exists.getPicture();
-            String existsOfferFileName = String.format("%s%s%s%s%s", this.environment.getProperty("imgFilePath"), SEPARATOR,
-                    "static", SEPARATOR, path);
-            this.uploader.delete(new File(existsOfferFileName));
+            Path absoluteFilePath;
+            try {
+                String existOfferFile = exists.getPicture();
+                absoluteFilePath = Paths.get(ClassLoader.getSystemResource(root).toURI());
+                String existsOfferFileName = String.format("%s%s%s", absoluteFilePath.normalize().toString(), SEPARATOR, existOfferFile);
+                this.uploader.delete(new File(existsOfferFileName));
+            } catch (URISyntaxException uriException) {
+                throw new URISyntaxException("Syntax uri error", uriException.getMessage(), uriException.getIndex());
+            }
 
             Offer save = this.service.save(offer);
             return new ResponseEntity<Offer>(save, HttpStatus.OK);
