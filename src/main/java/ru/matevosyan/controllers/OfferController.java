@@ -119,8 +119,8 @@ public class OfferController {
         if (name.contains("default")) {
             offer.setPicture(String.format("%s%s%s", IMAGE_PACKAGE, SEPARATOR, name));
         } else {
-            offer.setPicture(String.format("%s/%s/%s%s/%s", "images", offer.getUser().getName(),
-                    offer.getCar().getBrand(), offer.getCar().getModelVehicle(), name));
+            offer.setPicture(String.format("%s%s%s%s%s%s%s%s", "images", SEPARATOR, offer.getUser().getName(), SEPARATOR,
+                    offer.getCar().getBrand(), offer.getCar().getModelVehicle(), SEPARATOR, name));
         }
 
         Offer save = this.service.save(offer);
@@ -207,12 +207,11 @@ public class OfferController {
             this.service.deleteById(id);
             Offer offer = optional.get();
             String root = this.environment.getProperty("rootDir");
-            String parent = this.environment.getProperty("imagesDir");
-            String pathToFile = String.format("%s%s%s", root, System.getProperty("file.separator"), parent);
             Path absoluteFilePath;
             try {
-                absoluteFilePath = Paths.get(ClassLoader.getSystemResource(pathToFile).toURI());
-                String dir = String.format("%s%s%s%s%s%s", absoluteFilePath.normalize().toString(),
+                absoluteFilePath = Paths.get(ClassLoader.getSystemResource(root).toURI());
+                String pathNormalise = absoluteFilePath.normalize().toString();
+                String dir = String.format("%s%s%s%s%s%s", pathNormalise.substring(0, pathNormalise.lastIndexOf(SEPARATOR)),
                         System.getProperty("file.separator"), offer.getUser().getName(), System.getProperty("file.separator"),
                         offer.getCar().getBrand(), offer.getCar().getModelVehicle());
                 this.uploader.delete(new File(dir));
