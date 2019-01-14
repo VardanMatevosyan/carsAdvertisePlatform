@@ -68,6 +68,7 @@ public class OfferController {
      * @param file to write.
      * @param offer model.
      * @param httpSession http session.
+     * @throws URISyntaxException uri syntax exception.
      * @return ResponseEntity Void type.
      */
     @PostMapping(value = "/**/uploadFile", consumes = {"multipart/form-data"})
@@ -195,6 +196,7 @@ public class OfferController {
     /**
      * Delete offer and picture belong to offer.
      * @param id offer id.
+     * @throws URISyntaxException uri syntax exception.
      * @return ResponseEntity which contains Offer if offer was deleted or String error if offer wasn't found.
      */
     @DeleteMapping(value = "/**/delete/{id}")
@@ -233,6 +235,7 @@ public class OfferController {
      * @param id offer id.
      * @param offer object;
      * @param session user.
+     * @throws URISyntaxException uri syntax exception.
      * @return ResponseEntity.
      */
     @PutMapping(value = "/**/update/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
